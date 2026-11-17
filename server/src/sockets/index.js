@@ -6,7 +6,7 @@ import { schemas, z } from '../config/validation.js';
 import { Device, User } from '../models/index.js';
 import { room, setIO, trackConnect, trackDisconnect } from '../services/realtime.js';
 import { closeBreak, extendBreak, getActiveTimer, startBreak, startFocus, updateFocus } from '../services/timerService.js';
-import { corsOriginOption } from '../utils/origins.js';
+import { corsOriginOption, socketAllowRequest } from '../utils/origins.js';
 import { verifyToken } from '../utils/tokens.js';
 
 export function attachSockets(httpServer) {
@@ -15,7 +15,7 @@ export function attachSockets(httpServer) {
     // `allowRequest` also covers WebSocket upgrades, which browsers do not
     // subject to CORS.
     cors: { origin: corsOriginOption(env.isOriginAllowed), methods: ['GET', 'POST'] },
-    allowRequest: (req, cb) => cb(null, env.isOriginAllowed(req.headers.origin)),
+    allowRequest: socketAllowRequest(env.isOriginAllowed),
     pingInterval: 20000,
     pingTimeout: 20000,
   });

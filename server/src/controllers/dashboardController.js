@@ -1,7 +1,7 @@
 import { buildDashboard } from '../services/insightsService.js';
 import { getActiveTimer } from '../services/timerService.js';
-import { pushEnabled } from '../services/pushService.js';
-import { env } from '../config/env.js';
+import { mailEnabled } from '../services/mailService.js';
+import { pushEnabled, pushPublicKey } from '../services/pushService.js';
 import { clientDate } from '../utils/dates.js';
 
 export async function dashboard(req, res) {
@@ -14,6 +14,6 @@ export async function state(req, res) {
     user: req.user.toPublic(),
     active: await getActiveTimer(req.userId),
     serverTime: Date.now(),
-    capabilities: { push: pushEnabled, vapidPublicKey: env.vapid.publicKey || null },
+    capabilities: { push: pushEnabled, vapidPublicKey: pushPublicKey(), email: mailEnabled },
   });
 }

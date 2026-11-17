@@ -1,15 +1,13 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
+import { buildBuddyEmail, createMailTransport } from './mailSetup.js';
 
 // Email stays disabled unless SMTP_HOST, SMTP_USER, SMTP_PASS and a valid
 // MAIL_FROM are all set (checked in config/validateEnv.js). There is no
 // built-in sender address.
-const configured = env.smtp.enabled;
-const transport = configured
-  ? nodemailer.createTransport({ host: env.smtp.host, port: env.smtp.port, secure: env.smtp.port === 465, auth: { user: env.smtp.user, pass: env.smtp.pass } })
-  : null;
+const transport = createMailTransport(nodemailer, env.smtp);
 
-export const mailEnabled = configured;
+export const mailEnabled = Boolean(transport);
 
 /**
  * Accountability buddy: tells a friend that a break was extended.
@@ -17,17 +15,11 @@ export const mailEnabled = configured;
  */
 export async function notifyBuddy(user, minutes) {
   if (!transport || !user.buddyEmail) return false;
-  const name = user.name || 'Your friend';
   try {
-    await transport.sendMail({
-      from: env.smtp.from,
-      to: user.buddyEmail,
-      subject: `${name} extended a break on FocusNest`,
-      text: `Hi! ${name} asked you to be their FocusNest accountability buddy.\n\nThey just extended a break by ${minutes} minutes. A friendly message might help them get back to focus.\n\n— FocusNest${env.appUrl ? `\n${env.appUrl}` : ''}`,
-    });
+    await transport.sendMail(buildBuddyEmail(user, minutes, { from: env.smtp.from, appUrl: env.appUrl }));
     return true;
   } catch (err) {
-    console.warn('[mail] buddy email failed:', err.message);
+    console.warn('[mail] buddy email failed:', err.code || 'send error');
     return false;
   }
 }

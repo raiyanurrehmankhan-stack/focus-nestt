@@ -293,7 +293,7 @@ export async function todaySessions(date = today()) {
 
 // ---------------- dashboard & state ----------------
 export async function getState() {
-  return { user: publicUser(), active: active(), serverTime: Date.now(), capabilities: { push: false, vapidPublicKey: null } };
+  return { user: publicUser(), active: active(), serverTime: Date.now(), capabilities: { push: false, vapidPublicKey: null, email: false } };
 }
 
 export async function getDashboard(date = today()) {

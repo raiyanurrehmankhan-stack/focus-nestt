@@ -30,6 +30,7 @@ export default function Settings() {
   const patchUser = useAppStore((s) => s.patchUser);
   const install = useAppStore((s) => s.install);
   const update = useAppStore((s) => s.update);
+  const emailOn = useAppStore((s) => s.capabilities.email === true);
   const [form, setForm] = useState({ name: user.name, defaultBreakMinutes: user.defaultBreakMinutes, screenGoalHours: user.screenGoalHours, buddyEmail: user.buddyEmail || '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -93,7 +94,13 @@ export default function Settings() {
             <div>
               <label htmlFor="s-buddy" className="label">Accountability buddy's email (optional)</label>
               <input id="s-buddy" type="email" className="field" placeholder="friend@example.com" value={form.buddyEmail} onChange={(e) => setForm({ ...form, buddyEmail: e.target.value })} />
-              <p className="muted mt-1 text-xs">{mode === 'account' ? 'They get an email only when you extend a break — never the reason.' : 'Buddy emails need an account.'}</p>
+              <p className="muted mt-1 text-xs">
+                {mode !== 'account'
+                  ? 'Buddy emails need an account.'
+                  : emailOn
+                    ? 'They get an email only when you extend a break — never the reason.'
+                    : 'Email is turned off on this server, so your buddy is not notified. You can still save their address for later.'}
+              </p>
               {errors.buddyEmail && <p className="field-error">{errors.buddyEmail}</p>}
             </div>
             <Toggle label="Demo mode" description="Timers last 30 seconds — great for presentations" checked={user.demoMode} onChange={(v) => savePatch({ demoMode: v })} />

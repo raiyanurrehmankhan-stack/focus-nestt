@@ -82,10 +82,11 @@ npm run dev                 # http://localhost:5173
 
 # 2. API (optional, for accounts, sync and push)
 cd server
-cp .env.example .env        # fill in MONGO_URI and JWT_SECRET
+cp .env.example .env        # works as-is: NODE_ENV=development, local MongoDB,
+                            # CORS_ORIGIN=http://localhost:5173 (edit MONGO_URI for Atlas)
 npm install
-npm run vapid               # prints VAPID keys for push → paste into .env
 npm run dev                 # http://localhost:4000  (GET /api/health)
+# optional push: npm run vapid → paste both keys + a VAPID_SUBJECT into .env
 
 # 3. Point the web app at the API
 cd ..
@@ -104,6 +105,12 @@ Other scripts:
 | `cd server && npm run seed` | Upsert activities and community events (also runs on API start) |
 
 The service worker is only active in production builds (`npm run build && npm run preview`).
+
+In development, leaving `JWT_SECRET` empty makes the API use a temporary random
+secret. **It changes on every restart, which signs everyone out.** Set
+`JWT_SECRET` in `server/.env` if you want sessions to survive restarts. Server
+tests: `cd server && npm test` (the Express/Socket.IO integration tests run
+once `npm install` has been done).
 
 ---
 
@@ -140,10 +147,10 @@ Socket.IO needs a long-running server, so the API is deployed separately
 
 | Name | Required | Notes |
 | --- | --- | --- |
+| `NODE_ENV` | ✅ production | Exactly `production` (`render.yaml` sets it). Unset also means production rules; other values are refused |
 | `MONGO_URI` | ✅ always | MongoDB Atlas connection string |
 | `JWT_SECRET` | ✅ production | Random secret, e.g. `openssl rand -base64 32` (Render can generate it) |
 | `CORS_ORIGIN` | ✅ production | Exact web app origin(s), comma-separated, `https://` only |
-| `CORS_ORIGIN_PATTERNS` | optional | Restricted wildcard for Vercel previews (see below) |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | for push | Keys from `cd server && npm run vapid`; push stays off unless all three are set |
 | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | optional | Buddy emails; leave the SMTP values empty to keep email off |
 | `APP_URL` | optional | Web app URL used in emails |
@@ -157,11 +164,22 @@ Socket.IO needs a long-running server, so the API is deployed separately
 
 ### Production configuration
 
-With `NODE_ENV=production` the API checks its settings on start-up
-(`server/src/config/validateEnv.js`) and **refuses to start** if anything
-unsafe is found, printing what to fix. Secret values are never printed. In
-development it only warns and uses safe fallbacks (for example a temporary
-random JWT secret and `http://localhost:5173` as the allowed origin).
+The API checks its settings on start-up (`server/src/config/validateEnv.js`)
+and **refuses to start** if anything unsafe is found, printing what to fix.
+Secret values are never printed.
+
+**Environment modes (`NODE_ENV`).** `production` applies strict rules.
+`development` and `test` relax them for local work, with warnings and safe
+fallbacks. The check fails closed:
+
+- An **unset** `NODE_ENV` applies production rules.
+- Any other value, including `Production`, `prod` or `staging`, stops start-up
+  with an error, so a typo can never relax production.
+
+**Change before deploying.** `server/.env.example` is set up for local
+development. On your host (e.g. Render) set `NODE_ENV=production`,
+`MONGO_URI`, `JWT_SECRET` and an `https://` `CORS_ORIGIN`. Do not copy the
+local values.
 
 **JWT secret.** Generate a random value and keep it out of git:
 
@@ -169,37 +187,44 @@ random JWT secret and `http://localhost:5173` as the allowed origin).
 openssl rand -base64 32
 ```
 
-Rejected in production: an empty value, anything containing a placeholder
-word (`change-me`, `changeme`, `your-secret`, `example`, …), well-known
-defaults (`secret`, `password`, …), values shorter than 32 characters and
-values with fewer than 10 different characters. On Render, `render.yaml`
-generates the secret for you.
+Rejected under production rules: an empty value, anything containing a
+placeholder word (`change-me`, `changeme`, `your-secret`, `example`, …),
+well-known defaults (`secret`, `password`, …), values shorter than 32
+characters and values with fewer than 10 different characters. On Render,
+`render.yaml` generates the secret for you. In development an empty value
+gives a temporary secret that changes on every restart and signs everyone out.
 
 **CORS (production).** List the exact origin(s) of the web app, comma-separated:
 
 ```
-CORS_ORIGIN=https://focus-nestt.vercel.app
+CORS_ORIGIN=https://focus-nestt.vercel.app,https://focus-nestt-git-staging-yourscope.vercel.app
 ```
 
-Each origin must be `https://`, with no path, query, fragment or trailing slash,
-and `*` is refused. Express and Socket.IO (including WebSocket connections)
-use the same check (`server/src/utils/origins.js`). Requests without an
-`Origin` header, such as health checks, are allowed.
+Each origin must be `https://`, with no path, query, fragment or trailing slash.
+`*` is **intentionally refused in every environment**, and so are wildcard or
+pattern origins (`CORS_ORIGIN_PATTERNS` is not supported). Express and
+Socket.IO, including WebSocket connections, use the same exact-match check
+(`server/src/utils/origins.js`). Requests without an `Origin` header, such as
+health checks, are allowed.
 
-**CORS for staging / Vercel previews.** Choose one:
+**CORS is not authentication.** It only tells browsers which websites may read
+API responses. Every API route still requires a valid sign-in token. CORS does
+not protect, hide or authenticate preview deployments; use Vercel's Deployment
+Protection for that.
+
+**Staging / Vercel previews.** Patterns aren't supported because on shared
+domains like `vercel.app` anyone can create projects. A pattern such as
+`focus-nestt-*-yourscope.vercel.app` could be matched by a project someone
+else names to fit it (name squatting). Use one of these instead:
 
 1. *Recommended:* run a separate staging API (a second Render service with its
    own database). In Vercel, set `VITE_API_URL` for the **Preview**
    environment only, so previews never touch production data.
-2. Add your branch's stable preview alias to `CORS_ORIGIN`. Vercel's alias has the
-   form `https://<project>-git-<branch>-<team>.vercel.app`; copy the exact
-   value from the deployment page.
-3. Allow a restricted pattern with `CORS_ORIGIN_PATTERNS`, e.g.
-   `https://focus-nestt-*-your-team.vercel.app`. Only `https://`, one `*` in
-   the first part of the host name, and at least 3 fixed characters on both
-   sides of it; broad patterns such as `https://*.vercel.app` are refused.
-   Because anyone can create Vercel projects, a pattern on `vercel.app` is less
-   strict than an exact origin. The API prints a warning when you use one.
+2. Add your branch's stable preview alias to `CORS_ORIGIN`. Vercel gives each
+   branch an alias of the form `https://<project>-git-<branch>-<scope>.vercel.app`.
+   On a personal account `<scope>` is usually like `<username>s-projects`, and
+   long names may be shortened, so copy the exact value from the deployment
+   page. Per-commit preview URLs change every time and are not covered.
 
 **`VAPID_SUBJECT` (push).** Push services use it to contact the sender. Use
 `mailto:` plus a mailbox you actually read on a domain you control, or an

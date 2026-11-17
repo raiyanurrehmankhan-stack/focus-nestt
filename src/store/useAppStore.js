@@ -12,7 +12,7 @@ export const useAppStore = create((set, get) => ({
   theme: prefs.theme || 'auto',
   online: typeof navigator === 'undefined' ? true : navigator.onLine,
   offlineData: false, // showing cached data while offline
-  capabilities: { push: false, vapidPublicKey: null },
+  capabilities: { push: false, vapidPublicKey: null, email: false },
   sync: { status: 'off', devices: 0 }, // realtime connection status
   install: { canPrompt: false, installed: false },
   update: { available: false, offlineReady: false },

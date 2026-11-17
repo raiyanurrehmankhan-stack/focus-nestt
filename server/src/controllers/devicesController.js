@@ -1,7 +1,6 @@
 import { Device } from '../models/index.js';
 import { connectedDeviceIds } from '../services/realtime.js';
-import { pushEnabled, sendToUser } from '../services/pushService.js';
-import { env } from '../config/env.js';
+import { pushEnabled, pushPublicKey, sendToUser } from '../services/pushService.js';
 
 const pub = (d, online) => ({ deviceId: d.deviceId, type: d.type, label: d.label, lastSeenAt: d.lastSeenAt, push: Boolean(d.pushSubscription?.endpoint), online: online.has(d.deviceId) });
 
@@ -32,7 +31,7 @@ export async function removeDevice(req, res) {
 }
 
 export function publicKey(_req, res) {
-  res.json({ enabled: pushEnabled, publicKey: env.vapid.publicKey || null });
+  res.json({ enabled: pushEnabled, publicKey: pushPublicKey() });
 }
 
 export async function testPush(req, res) {

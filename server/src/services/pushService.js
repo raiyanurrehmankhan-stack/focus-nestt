@@ -1,13 +1,16 @@
 import webpush from 'web-push';
 import { env } from '../config/env.js';
 import { Device } from '../models/index.js';
+import { initPush } from './pushSetup.js';
 import { connectedDeviceIds } from './realtime.js';
 
 // Enabled only when both VAPID keys AND a valid VAPID_SUBJECT are configured
-// (checked in config/validateEnv.js). There is no built-in sender default.
-export const pushEnabled = env.vapid.enabled;
-if (pushEnabled) webpush.setVapidDetails(env.vapid.subject, env.vapid.publicKey, env.vapid.privateKey);
-else console.warn('[push] Web Push is disabled. To enable it set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY (npm run vapid) and VAPID_SUBJECT.');
+// (checked in config/validateEnv.js) and web-push accepts them. There is no
+// built-in sender default, and a rejected configuration disables push instead
+// of crashing the server.
+export const pushEnabled = initPush(webpush, env.vapid);
+const publicKey = pushEnabled ? env.vapid.publicKey : null;
+export const pushPublicKey = () => publicKey;
 
 /**
  * Sends a Web Push notification to a user's devices.

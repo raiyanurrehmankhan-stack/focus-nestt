@@ -2,14 +2,21 @@
 // server's npm packages). Run with: node --test tests/*.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { corsOriginOption, createOriginMatcher, parseCorsConfig, parseOrigin, parseOriginPattern } from '../server/src/utils/origins.js';
+import { corsOriginOption, createOriginMatcher, parseCorsConfig, parseOrigin, socketAllowRequest } from '../server/src/utils/origins.js';
 
-const PROD = { production: true };
-const matcher = (env, opts = PROD) => {
+const STRICT = { strict: true };
+const matcher = (env, opts = STRICT) => {
   const c = parseCorsConfig(env, opts);
   assert.deepEqual(c.errors, [], `unexpected errors: ${c.errors.join(' | ')}`);
   return createOriginMatcher(c);
 };
+
+/** Calls a callback-style function and returns every callback invocation. */
+function collect(fn, ...args) {
+  const calls = [];
+  fn(...args, (...cbArgs) => calls.push(cbArgs));
+  return calls;
+}
 
 test('exact origin match', () => {
   const ok = matcher({ CORS_ORIGIN: 'https://focus-nestt.vercel.app' });
@@ -20,7 +27,7 @@ test('exact origin match', () => {
 });
 
 test('multiple origins, whitespace and duplicates', () => {
-  const c = parseCorsConfig({ CORS_ORIGIN: ' https://a.example.org , https://b.example.org,https://a.example.org ' }, PROD);
+  const c = parseCorsConfig({ CORS_ORIGIN: ' https://a.example.org , https://b.example.org,https://a.example.org ' }, STRICT);
   assert.deepEqual(c.errors, []);
   assert.deepEqual(c.origins, ['https://a.example.org', 'https://b.example.org']);
   const ok = createOriginMatcher(c);
@@ -33,86 +40,96 @@ test('invalid origins are rejected', () => {
   for (const bad of ['not a url', 'ftp://files.example.org', 'https://user:pw@app.example.org', 'focus-nestt.vercel.app']) {
     assert.ok(parseOrigin(bad).error, `should reject ${bad}`);
   }
-  const c = parseCorsConfig({ CORS_ORIGIN: 'https://ok.example.org,not a url' }, PROD);
-  assert.equal(c.errors.length, 1);
+  assert.equal(parseCorsConfig({ CORS_ORIGIN: 'https://ok.example.org,not a url' }, STRICT).errors.length, 1);
 });
 
-test('production requires https; development allows http', () => {
-  assert.ok(parseCorsConfig({ CORS_ORIGIN: 'http://app.example.org' }, PROD).errors[0].includes('https'));
-  assert.deepEqual(parseCorsConfig({ CORS_ORIGIN: 'http://localhost:5173' }, { production: false }).errors, []);
+test('strict rules require https; relaxed rules allow http://localhost', () => {
+  assert.match(parseCorsConfig({ CORS_ORIGIN: 'http://app.example.org' }, STRICT).errors[0], /https/);
+  assert.match(parseCorsConfig({ CORS_ORIGIN: 'http://localhost:5173' }, STRICT).errors[0], /https/);
+  assert.deepEqual(parseCorsConfig({ CORS_ORIGIN: 'http://localhost:5173' }, { strict: false }).errors, []);
 });
 
-test('wildcard origins are rejected', () => {
-  assert.ok(parseCorsConfig({ CORS_ORIGIN: '*' }, PROD).errors.length);
-  assert.ok(parseCorsConfig({ CORS_ORIGIN: '*' }, { production: false }).errors.length, 'also refused in development');
-  assert.ok(parseCorsConfig({ CORS_ORIGIN: 'https://*.vercel.app' }, PROD).errors[0].includes('wildcard'));
+test('wildcard origins are rejected in every environment', () => {
+  for (const opts of [STRICT, { strict: false }]) {
+    assert.match(parseCorsConfig({ CORS_ORIGIN: '*' }, opts).errors[0], /must not be "\*"/);
+    assert.match(parseCorsConfig({ CORS_ORIGIN: 'https://*.vercel.app' }, opts).errors[0], /wildcard/);
+  }
+});
+
+test('CORS_ORIGIN_PATTERNS is no longer supported and stops start-up', () => {
+  for (const opts of [STRICT, { strict: false }]) {
+    const c = parseCorsConfig({ CORS_ORIGIN: 'https://focus-nestt.vercel.app', CORS_ORIGIN_PATTERNS: 'https://focus-nestt-*-team.vercel.app' }, opts);
+    assert.ok(c.errors.some((e) => e.includes('CORS_ORIGIN_PATTERNS is not supported')));
+  }
+  assert.deepEqual(parseCorsConfig({ CORS_ORIGIN: 'https://focus-nestt.vercel.app', CORS_ORIGIN_PATTERNS: '   ' }, STRICT).errors, [], 'empty value is ignored');
 });
 
 test('trailing slash, path, query and fragment are rejected', () => {
   for (const bad of ['https://app.example.org/', 'https://app.example.org/path', 'https://app.example.org?x=1', 'https://app.example.org#top']) {
-    const r = parseOrigin(bad, { requireHttps: true });
-    assert.ok(r.error, `should reject ${bad}`);
+    assert.ok(parseOrigin(bad, { requireHttps: true }).error, `should reject ${bad}`);
   }
   assert.match(parseOrigin('https://app.example.org/').error, /slash/);
   assert.match(parseOrigin('https://App.Example.org').error, /canonical/, 'non-canonical case is rejected with a hint');
 });
 
-test('look-alike and unrelated domains are rejected', () => {
-  const ok = matcher({ CORS_ORIGIN: 'https://focus-nestt.vercel.app', CORS_ORIGIN_PATTERNS: 'https://focus-nestt-*-myteam.vercel.app' });
+test('look-alike and unrelated domains are rejected (exact match only)', () => {
+  const ok = matcher({ CORS_ORIGIN: 'https://focus-nestt.vercel.app,https://focus-nestt-git-staging-yourscope.vercel.app' });
+  assert.equal(ok('https://focus-nestt-git-staging-yourscope.vercel.app'), true);
   for (const evil of [
     'https://focus-nestt.vercel.app.evil.com',
     'https://evilfocus-nestt.vercel.app',
     'https://focus-nestt.vercel.app.',
-    'https://focus-nestt-abc-myteam.vercel.app.evil.com',
-    'https://focus-nestt-abc-myteam-vercel.app',
-    'https://focus-nestt-a.b-myteam.vercel.app',
-    'https://x.focus-nestt-abc-myteam.vercel.app',
-    'http://focus-nestt-abc-myteam.vercel.app',
-    'https://focus-nestt-abc-otherteam.vercel.app',
-    'https://xfocus-nestt-abc-myteam.vercel.app',
+    'https://focus-nestt-attacker-yourscope.vercel.app',
+    'https://focus-nestt-git-staging-yourscope.vercel.app.evil.com',
+    'https://x.focus-nestt.vercel.app',
+    'https://FOCUS-NESTT.vercel.app',
     'null',
   ]) assert.equal(ok(evil), false, `should reject ${evil}`);
 });
 
-test('explicitly configured pattern matching', () => {
-  const ok = matcher({ CORS_ORIGIN: 'https://focus-nestt.vercel.app', CORS_ORIGIN_PATTERNS: 'https://focus-nestt-*-myteam.vercel.app' });
-  assert.equal(ok('https://focus-nestt-git-staging-myteam.vercel.app'), true);
-  assert.equal(ok('https://focus-nestt-a1b2c3d4e-myteam.vercel.app'), true);
-  const p = parseOriginPattern('https://focus-nestt-*-myteam.vercel.app');
-  assert.ok(p.regex.source.startsWith('^') && p.regex.source.endsWith('$'), 'pattern is anchored');
+test('missing CORS_ORIGIN: error under strict rules, localhost fallback when relaxed', () => {
+  const strict = parseCorsConfig({}, STRICT);
+  assert.equal(strict.errors.length, 1);
+  assert.match(strict.errors[0], /CORS_ORIGIN is required in production/);
+  const relaxed = parseCorsConfig({}, { strict: false });
+  assert.deepEqual(relaxed.errors, []);
+  assert.deepEqual(relaxed.origins, ['http://localhost:5173', 'http://localhost:4173']);
+  assert.equal(relaxed.warnings.length, 1);
 });
 
-test('broad or malformed patterns are refused', () => {
-  for (const bad of [
-    'https://*.vercel.app',
-    'https://*-myteam.vercel.app',
-    'https://ab*cd.vercel.app',
-    'https://focus-nestt-*.vercel.app',
-    'https://focus-*-*-team.vercel.app',
-    'https://app.*.example.org',
-    'http://focus-nestt-*-myteam.vercel.app',
-    'https://focus-nestt-*-myteam.vercel.app/path',
-    'https://focus-nestt-*-myteam.vercel.app:8443',
-    'https://foo-*-bar.app',
-    '^https://.*$',
-  ]) assert.ok(parseOriginPattern(bad).error, `should refuse ${bad}`);
-});
-
-test('missing CORS_ORIGIN: error in production, localhost fallback in development', () => {
-  const prod = parseCorsConfig({}, PROD);
-  assert.equal(prod.errors.length, 1);
-  assert.match(prod.errors[0], /CORS_ORIGIN is required in production/);
-  const dev = parseCorsConfig({}, { production: false });
-  assert.deepEqual(dev.errors, []);
-  assert.deepEqual(dev.origins, ['http://localhost:5173', 'http://localhost:4173']);
-  assert.equal(dev.warnings.length, 1);
-});
-
-test('requests without an Origin header are allowed; the cors adapter rejects with 403', () => {
+test('requests without an Origin header are allowed; non-string origins are not', () => {
   const ok = matcher({ CORS_ORIGIN: 'https://focus-nestt.vercel.app' });
   assert.equal(ok(undefined), true);
+  assert.equal(ok(null), true);
   assert.equal(ok(''), true);
-  const option = corsOriginOption(ok);
-  option('https://focus-nestt.vercel.app', (err, allowed) => { assert.equal(err, null); assert.equal(allowed, true); });
-  option('https://evil.example.org', (err) => { assert.equal(err.status, 403); });
+  assert.equal(ok(['https://focus-nestt.vercel.app']), false);
+});
+
+test('cors adapter: allows with (null, true), rejects with a 403 error, exactly one callback each', () => {
+  const option = corsOriginOption(matcher({ CORS_ORIGIN: 'https://focus-nestt.vercel.app' }));
+  const allowed = collect(option, 'https://focus-nestt.vercel.app');
+  assert.equal(allowed.length, 1);
+  assert.deepEqual(allowed[0], [null, true]);
+  const denied = collect(option, 'https://evil.example.org');
+  assert.equal(denied.length, 1);
+  assert.ok(denied[0][0] instanceof Error);
+  assert.equal(denied[0][0].status, 403);
+  const noOrigin = collect(option, undefined);
+  assert.deepEqual(noOrigin, [[null, true]]);
+});
+
+test('socket allowRequest adapter: same decision as the CORS check, for handshakes and upgrades', () => {
+  const allow = socketAllowRequest(matcher({ CORS_ORIGIN: 'https://focus-nestt.vercel.app' }));
+  const cases = [
+    [{ headers: { origin: 'https://focus-nestt.vercel.app' } }, true],
+    [{ headers: { origin: 'https://evil.example.org' } }, false],
+    [{ headers: { origin: 'https://focus-nestt.vercel.app', upgrade: 'websocket' } }, true],
+    [{ headers: { origin: 'https://evil.example.org', upgrade: 'websocket' } }, false],
+    [{ headers: {} }, true],
+  ];
+  for (const [req, expected] of cases) {
+    const calls = collect(allow, req);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0], [null, expected], JSON.stringify(req.headers));
+  }
 });
