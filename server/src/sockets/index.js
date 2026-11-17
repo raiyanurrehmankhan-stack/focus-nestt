@@ -6,11 +6,16 @@ import { schemas, z } from '../config/validation.js';
 import { Device, User } from '../models/index.js';
 import { room, setIO, trackConnect, trackDisconnect } from '../services/realtime.js';
 import { closeBreak, extendBreak, getActiveTimer, startBreak, startFocus, updateFocus } from '../services/timerService.js';
+import { corsOriginOption } from '../utils/origins.js';
 import { verifyToken } from '../utils/tokens.js';
 
 export function attachSockets(httpServer) {
   const io = new Server(httpServer, {
-    cors: { origin: env.corsOrigins, methods: ['GET', 'POST'] },
+    // Same origin check as the REST API. `cors` covers HTTP long-polling;
+    // `allowRequest` also covers WebSocket upgrades, which browsers do not
+    // subject to CORS.
+    cors: { origin: corsOriginOption(env.isOriginAllowed), methods: ['GET', 'POST'] },
+    allowRequest: (req, cb) => cb(null, env.isOriginAllowed(req.headers.origin)),
     pingInterval: 20000,
     pingTimeout: 20000,
   });

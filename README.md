@@ -135,16 +135,18 @@ Socket.IO needs a long-running server, so the API is deployed separately
    connection string. Under *Network Access*, allow your host's outbound IPs (or `0.0.0.0/0`).
 2. **Render → New → Blueprint →** pick this repo. `render.yaml` creates the
    `focusnest-api` web service (built and started from the repository root so the API can use `shared/`; health check `/api/health`).
-3. Set the environment variables (see `server/.env.example`):
+3. Set the environment variables (see `server/.env.example` and
+   [Production configuration](#production-configuration) below):
 
 | Name | Required | Notes |
 | --- | --- | --- |
-| `MONGO_URI` | ✅ | MongoDB Atlas connection string |
-| `JWT_SECRET` | ✅ | ≥ 32 random characters (Render can generate it) |
-| `CORS_ORIGIN` | ✅ | Your Vercel URL(s), comma-separated |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | for push | `cd server && npm run vapid` |
+| `MONGO_URI` | ✅ always | MongoDB Atlas connection string |
+| `JWT_SECRET` | ✅ production | Random secret, e.g. `openssl rand -base64 32` (Render can generate it) |
+| `CORS_ORIGIN` | ✅ production | Exact web app origin(s), comma-separated, `https://` only |
+| `CORS_ORIGIN_PATTERNS` | optional | Restricted wildcard for Vercel previews (see below) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | for push | Keys from `cd server && npm run vapid`; push stays off unless all three are set |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | optional | Buddy emails; leave the SMTP values empty to keep email off |
 | `APP_URL` | optional | Web app URL used in emails |
-| `SMTP_*`, `MAIL_FROM` | optional | Accountability-buddy emails |
 
 4. Copy the service URL into Vercel's `VITE_API_URL` and redeploy the web app.
 
@@ -152,6 +154,75 @@ Socket.IO needs a long-running server, so the API is deployed separately
 > scheduled break alarms only fire while the instance is awake. Clients also
 > check the timer when they come back to the foreground, so nothing is lost —
 > but for reliable phone push use a paid/always-on instance.
+
+### Production configuration
+
+With `NODE_ENV=production` the API checks its settings on start-up
+(`server/src/config/validateEnv.js`) and **refuses to start** if anything
+unsafe is found, printing what to fix. Secret values are never printed. In
+development it only warns and uses safe fallbacks (for example a temporary
+random JWT secret and `http://localhost:5173` as the allowed origin).
+
+**JWT secret.** Generate a random value and keep it out of git:
+
+```bash
+openssl rand -base64 32
+```
+
+Rejected in production: an empty value, anything containing a placeholder
+word (`change-me`, `changeme`, `your-secret`, `example`, …), well-known
+defaults (`secret`, `password`, …), values shorter than 32 characters and
+values with fewer than 10 different characters. On Render, `render.yaml`
+generates the secret for you.
+
+**CORS (production).** List the exact origin(s) of the web app, comma-separated:
+
+```
+CORS_ORIGIN=https://focus-nestt.vercel.app
+```
+
+Each origin must be `https://`, with no path, query, fragment or trailing slash,
+and `*` is refused. Express and Socket.IO (including WebSocket connections)
+use the same check (`server/src/utils/origins.js`). Requests without an
+`Origin` header, such as health checks, are allowed.
+
+**CORS for staging / Vercel previews.** Choose one:
+
+1. *Recommended:* run a separate staging API (a second Render service with its
+   own database). In Vercel, set `VITE_API_URL` for the **Preview**
+   environment only, so previews never touch production data.
+2. Add your branch's stable preview alias to `CORS_ORIGIN`. Vercel's alias has the
+   form `https://<project>-git-<branch>-<team>.vercel.app`; copy the exact
+   value from the deployment page.
+3. Allow a restricted pattern with `CORS_ORIGIN_PATTERNS`, e.g.
+   `https://focus-nestt-*-your-team.vercel.app`. Only `https://`, one `*` in
+   the first part of the host name, and at least 3 fixed characters on both
+   sides of it; broad patterns such as `https://*.vercel.app` are refused.
+   Because anyone can create Vercel projects, a pattern on `vercel.app` is less
+   strict than an exact origin. The API prints a warning when you use one.
+
+**`VAPID_SUBJECT` (push).** Push services use it to contact the sender. Use
+`mailto:` plus a mailbox you actually read on a domain you control, or an
+`https://` URL you control. Without your own domain, your live Vercel address
+works, e.g. `VAPID_SUBJECT=https://focus-nestt.vercel.app`. If the VAPID keys
+are set but `VAPID_SUBJECT` is missing, the API starts with **push disabled**
+and logs a warning. Placeholder domains (`example.com`, `yourdomain…`) are
+rejected in production.
+
+**`MAIL_FROM` (email).** Email is only needed for accountability-buddy
+notifications.
+
+- **To keep email disabled** (recommended until you have a verified domain),
+  leave `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` empty. Nothing is sent.
+- **To enable it:**
+  1. Verify a domain you own with an SMTP provider (Brevo, Resend, Mailgun,
+     Amazon SES, …).
+  2. Add the SPF, DKIM and DMARC DNS records the provider gives you.
+  3. Set all three SMTP values plus `MAIL_FROM="FocusNest <no-reply@yourdomain>"`.
+
+  If SMTP is configured but `MAIL_FROM` is missing or invalid, production
+  refuses to start. A half-configured SMTP setup (only some of the three values)
+  is also refused.
 
 ---
 

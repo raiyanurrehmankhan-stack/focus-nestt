@@ -1,7 +1,10 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
 
-const configured = Boolean(env.smtp.host && env.smtp.user && env.smtp.pass);
+// Email stays disabled unless SMTP_HOST, SMTP_USER, SMTP_PASS and a valid
+// MAIL_FROM are all set (checked in config/validateEnv.js). There is no
+// built-in sender address.
+const configured = env.smtp.enabled;
 const transport = configured
   ? nodemailer.createTransport({ host: env.smtp.host, port: env.smtp.port, secure: env.smtp.port === 465, auth: { user: env.smtp.user, pass: env.smtp.pass } })
   : null;

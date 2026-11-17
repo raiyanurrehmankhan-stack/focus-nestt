@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import mongoose from 'mongoose';
 import { env } from './config/env.js';
 import { apiLimiter } from './middleware/rateLimit.js';
+import { corsOriginOption } from './utils/origins.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { privateRouter, publicRouter } from './routes/index.js';
 
@@ -14,11 +15,9 @@ export function createApp() {
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(cors({
-    origin(origin, cb) {
-      // Allow same-origin/server-to-server requests (no Origin header) and configured origins.
-      if (!origin || env.corsOrigins.includes(origin) || env.corsOrigins.includes('*')) return cb(null, true);
-      return cb(Object.assign(new Error('Origin not allowed by CORS'), { status: 403 }));
-    },
+    // Same matcher as Socket.IO (server/src/utils/origins.js); requests with
+    // no Origin header (same-origin, server-to-server) are allowed.
+    origin: corsOriginOption(env.isOriginAllowed),
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-Id'],
     maxAge: 600,
