@@ -134,7 +134,7 @@ Socket.IO needs a long-running server, so the API is deployed separately
 1. Create a free **MongoDB Atlas** cluster → *Connect → Drivers* → copy the
    connection string. Under *Network Access*, allow your host's outbound IPs (or `0.0.0.0/0`).
 2. **Render → New → Blueprint →** pick this repo. `render.yaml` creates the
-   `focusnest-api` web service (root `server/`, health check `/api/health`).
+   `focusnest-api` web service (built and started from the repository root so the API can use `shared/`; health check `/api/health`).
 3. Set the environment variables (see `server/.env.example`):
 
 | Name | Required | Notes |

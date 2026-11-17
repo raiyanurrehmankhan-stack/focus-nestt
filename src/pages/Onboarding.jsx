@@ -33,7 +33,7 @@ export default function Onboarding() {
     try {
       const profile = {
         name: a.name.trim().slice(0, 40), userType: a.userType, ageGroup: a.ageGroup, struggles: a.struggles, dangerTime: a.dangerTime,
-        screenGoalHours: Number(a.screenGoalHours), bedtimeGoal: a.bedtimeGoal, demoMode: true, theme: 'auto',
+        screenGoalHours: Number(a.screenGoalHours), bedtimeGoal: a.bedtimeGoal, demoMode: false, theme: 'auto',
       };
       if (withAccount) {
         writeJSON('fn:onboarding', profile);

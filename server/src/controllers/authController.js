@@ -49,7 +49,7 @@ export async function logoutAll(req, res) {
 export async function deleteMe(req, res) {
   const { password } = z.object({ password: z.string().min(1, 'Enter your password to confirm') }).parse(req.body || {});
   const user = await User.findById(req.userId).select('+passwordHash');
-  if (!(await bcrypt.compare(password, user.passwordHash))) throw new HttpError(401, 'Password is incorrect');
+  if (!(await bcrypt.compare(password, user.passwordHash))) throw new HttpError(403, 'Password is incorrect'); // not 401: the client treats 401 as an expired session
   const userId = req.userId;
   await Promise.all([CheckIn, FocusSession, BreakSession, SleepLog, Win, Goal, Badge, ActivityLog, Device].map((M) => M.deleteMany({ userId })));
   await User.deleteOne({ _id: userId });

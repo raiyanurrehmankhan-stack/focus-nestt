@@ -73,7 +73,7 @@ function parse(schema, data) {
 // ---------------- profile ----------------
 const defaultProfile = () => ({
   name: 'Friend', userType: 'University student', struggles: [], screenGoalHours: 4, bedtimeGoal: '23:00', wakeGoal: '07:00',
-  defaultBreakMinutes: 30, theme: 'auto', demoMode: true, soundOn: true, buddyEmail: '', createdAt: new Date().toISOString(),
+  defaultBreakMinutes: 30, theme: 'auto', demoMode: false, soundOn: true, buddyEmail: '', createdAt: new Date().toISOString(),
 });
 
 function publicUser() {
@@ -558,7 +558,7 @@ export function migrateLegacyData() {
   const old = readJSON('focusnest-v1');
   if (!old || typeof old !== 'object') return false;
   try {
-    const struggleMap = { Scrolling: 'reels', Reels: 'reels', Gaming: 'gaming', Comparison: 'comparison', 'Comparing with others': 'comparison', Loneliness: 'lonely', 'Feeling lonely': 'lonely', 'Late nights': 'latenight' };
+    const struggleMap = { Scrolling: 'reels', Reels: 'reels', Gaming: 'gaming', Comparison: 'comparison', 'Social comparison': 'comparison', 'Comparing with others': 'comparison', Loneliness: 'lonely', 'Feeling lonely': 'lonely', 'Late nights': 'latenight' };
     const moodMap = (m = '') => (/Good/.test(m) ? 'good' : /Tired/.test(m) ? 'tired' : /Stressed/.test(m) ? 'stressed' : /Low/.test(m) ? 'low' : 'okay');
     const appMap = { Instagram: 'social', TikTok: 'social', YouTube: 'video', PUBG: 'games', 'Other games': 'games' };
     const userType = C.USER_TYPES.includes(old.userType) ? old.userType : 'University student';

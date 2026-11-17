@@ -1,14 +1,23 @@
 # Render Blueprint for the FocusNest API (server/).
 # Render > New > Blueprint > select this repository. Then fill in the
 # environment variables marked `sync: false` in the Render dashboard.
+#
+# No rootDir on purpose: the API imports code from ../shared, and Render
+# makes files outside a service's root directory unavailable. Commands run
+# from the repository root instead; buildFilter limits auto-deploys to
+# changes that affect the API.
 services:
   - type: web
     name: focusnest-api
     runtime: node
-    rootDir: server
     plan: free
-    buildCommand: npm install --omit=dev
-    startCommand: npm start
+    buildCommand: npm install --prefix server --omit=dev
+    startCommand: node server/src/server.js
+    buildFilter:
+      paths:
+        - server/**
+        - shared/**
+        - render.yaml
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:

@@ -49,7 +49,7 @@ export default function Auth({ mode = 'signin' }) {
           ...(quiz.screenGoalHours ? { screenGoalHours: Number(quiz.screenGoalHours) } : {}),
           ...(quiz.bedtimeGoal ? { bedtimeGoal: quiz.bedtimeGoal } : {}),
           ...(quiz.defaultBreakMinutes ? { defaultBreakMinutes: quiz.defaultBreakMinutes } : {}),
-          demoMode: quiz.demoMode ?? false,
+          demoMode: false, // new accounts use real timer lengths; demo mode stays optional in Settings
         };
         const user = await signUp(profile, { importGuest });
         removeKey('fn:onboarding');

@@ -1,6 +1,7 @@
 import { CloudOff, Download, Flame, Laptop, Moon, Smartphone, Sun } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme.js';
+import { api } from '../../services/api.js';
 import { promptInstall } from '../../services/pwa.js';
 import { useAppStore } from '../../store/useAppStore.js';
 import { useProgressStore } from '../../store/useProgressStore.js';
@@ -19,7 +20,12 @@ export function TopBar({ title, subtitle }) {
   const streak = useProgressStore((s) => s.streakDays);
   const resolved = useTheme();
 
-  const toggleTheme = (t) => { setTheme(t); patchUser({ theme: t }); };
+  const toggleTheme = (t) => {
+    setTheme(t);
+    patchUser({ theme: t });
+    // Save to the profile too, otherwise the saved theme is restored on reload.
+    api.updateProfile({ theme: t }).catch(() => {});
+  };
 
   return (
     <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 px-4 pb-2 pt-[calc(1rem+var(--safe-top))] sm:px-6 lg:px-8 lg:pt-7">

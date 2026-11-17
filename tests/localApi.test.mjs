@@ -53,6 +53,23 @@ test('legacy prototype data is migrated', async () => {
   assert.equal(api.migrateLegacyData(), false, 'runs only once');
 });
 
+test("legacy 'Social comparison' struggle is migrated", async () => {
+  store.clear();
+  store.set('focusnest-v1', JSON.stringify({ onboarded: true, name: 'Bilal', userType: 'University student', struggle: 'Social comparison', points: 0 }));
+  const api = await load();
+  assert.equal(api.migrateLegacyData(), true);
+  assert.deepEqual((await api.me()).user.struggles, ['comparison']);
+});
+
+test('new guest profiles start with demo mode off', async () => {
+  store.clear();
+  const api = await load();
+  await api.createGuestProfile({ name: 'New user' });
+  assert.equal((await api.me()).user.demoMode, false);
+  await api.updateProfile({ demoMode: true }); // still available as an option
+  assert.equal((await api.me()).user.demoMode, true);
+});
+
 test('guest flow: onboarding, check-in, focus, break, extend, close', async () => {
   store.clear();
   const api = await load();
