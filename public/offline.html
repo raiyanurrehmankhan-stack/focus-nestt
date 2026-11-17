@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2A9D8F" />
+    <title>FocusNest — You're offline</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #F5F8FA; color: #1B2B3A; }
+      @media (prefers-color-scheme: dark) { body { background: #0F172A; color: #E2E8F0; } .card { background: #1E293B !important; } p { color: #A6B2BF !important; } }
+      .card { background: #fff; border-radius: 20px; padding: 32px 28px; max-width: 360px; text-align: center; box-shadow: 0 18px 40px -18px rgba(27,43,58,.28); margin: 16px; }
+      img { width: 96px; height: 96px; }
+      h1 { font-size: 22px; margin: 12px 0 8px; }
+      p { color: #5B6B7A; line-height: 1.5; margin: 0 0 20px; }
+      button { background: #2A9D8F; color: #fff; border: 0; border-radius: 999px; padding: 12px 22px; font-size: 15px; font-weight: 600; cursor: pointer; }
+      ul { text-align: left; color: inherit; padding-left: 20px; line-height: 1.7; margin: 0 0 20px; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img src="/brand/logo-icon-160.png" alt="FocusNest" />
+      <h1>You're offline</h1>
+      <p>This page isn't available without a connection. While you wait, this is a good moment for an offline break:</p>
+      <ul>
+        <li>Take a 5-minute walk</li>
+        <li>Stretch your neck and shoulders</li>
+        <li>Drink a glass of water</li>
+      </ul>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

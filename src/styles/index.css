@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FocusNest design system (doc 5.2): calm teal + soft blue, 16px cards,
+   soft shadows, Inter for body and Poppins for headings. */
+@layer base {
+  :root {
+    color-scheme: light;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  :root.dark { color-scheme: dark; }
+  html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-canvas-light text-ink font-sans antialiased dark:bg-canvas-dark dark:text-slate-100;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+  h1, h2, h3, h4 { @apply font-display tracking-tight; }
+  :focus-visible { @apply outline-none ring-2 ring-teal ring-offset-2 ring-offset-canvas-light dark:ring-offset-canvas-dark; }
+  ::selection { @apply bg-teal-200 text-ink; }
+  input[type='time']::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+  .dark input[type='time']::-webkit-calendar-picker-indicator { filter: invert(1); }
+}
+
+@layer components {
+  .card { @apply rounded-card bg-card-light p-5 shadow-soft dark:bg-card-dark dark:shadow-none dark:ring-1 dark:ring-line-dark sm:p-6; }
+  .card-title { @apply font-display text-lg font-semibold text-ink dark:text-white; }
+  .muted { @apply text-ink-soft dark:text-slate-400; }
+  .label { @apply mb-1.5 block text-sm font-medium text-ink dark:text-slate-200; }
+  .field {
+    @apply w-full rounded-xl border border-line-light bg-white px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-mute
+      transition focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/25
+      dark:border-line-dark dark:bg-slate-900/60 dark:text-white dark:placeholder:text-slate-500;
+  }
+  .field-error { @apply mt-1 text-sm text-danger; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-sm font-medium text-teal-700 dark:bg-teal-900/40 dark:text-teal-200; }
+  .pill { @apply inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-semibold shadow-soft dark:bg-slate-800 dark:shadow-none dark:ring-1 dark:ring-line-dark; }
+  .skeleton { @apply relative overflow-hidden rounded-xl bg-slate-200/70 dark:bg-slate-700/50; }
+  .skeleton::after { content: ''; @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/10; animation: shimmer 1.4s infinite; }
+  .page { @apply mx-auto w-full max-w-7xl animate-fadeIn; }
+  .grid-cards { @apply grid gap-4 sm:gap-5; }
+  .list-row { @apply flex items-center justify-between gap-3 rounded-xl bg-canvas-light px-4 py-3 dark:bg-slate-800/60; }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }

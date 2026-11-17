@@ -1,1 +1,46 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="theme-color" content="#2A9D8F"/><meta name="description" content="FocusNest — a calm digital wellbeing companion for better focus, sleep and screen habits."/><link rel="manifest" href="manifest.webmanifest"/><title>FocusNest — Track it. Control it. Replace it.</title><link rel="stylesheet" href="styles.css"/></head><body><div id="app"></div><script src="app.js" defer></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>FocusNest — Track it. Control it. Replace it.</title>
+    <meta name="description" content="FocusNest is a calm digital wellbeing companion for focus, breaks, sleep and healthier screen habits." />
+    <meta name="application-name" content="FocusNest" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#2A9D8F" />
+
+    <!-- PWA (the manifest link is injected by vite-plugin-pwa) -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+
+    <!-- iOS / iPadOS home-screen support -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="FocusNest" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- %SPLASH_LINKS% -->
+
+    <!-- Windows -->
+    <meta name="msapplication-TileColor" content="#2A9D8F" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+
+    <!-- Fonts (Inter for body, Poppins for headings). System fonts are used offline. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" />
+
+    <script src="/theme-init.js"></script>
+  </head>
+  <body>
+    <noscript>FocusNest needs JavaScript to run. Please enable it in your browser settings.</noscript>
+    <div id="root">
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-family:system-ui,sans-serif;color:#2A9D8F">
+        <img src="/brand/logo-icon-160.png" width="80" height="80" alt="" />
+        <strong>FocusNest</strong>
+      </div>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

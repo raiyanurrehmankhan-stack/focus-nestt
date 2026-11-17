@@ -1,0 +1,32 @@
+# Render Blueprint for the FocusNest API (server/).
+# Render > New > Blueprint > select this repository. Then fill in the
+# environment variables marked `sync: false` in the Render dashboard.
+services:
+  - type: web
+    name: focusnest-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
